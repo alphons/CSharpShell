@@ -5,7 +5,7 @@ var compiler = new CSharpShell.Compiler();
 
 object? result;
 
-if (args.Length == 0 || Debugger.IsAttached == false)
+if (args.Length == 0 || Debugger.IsAttached == true)
 {
 	Console.WriteLine("CSharpShell 1.0 (exit = quit)");
 	// Interactive
@@ -49,13 +49,13 @@ while (!sr.EndOfStream)
 		break;
 	if (line.StartsWith('#'))
 		continue;
-	sb.Append(line);
+	sb.AppendLine(line);
 }
 var cs = sb.ToString();
 
 try
 {
-	result = compiler.Execute(cs, new string[0]);
+	result = compiler.Execute(cs, args);
 }
 catch (Exception ex)
 {
