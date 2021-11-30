@@ -50,7 +50,7 @@ namespace CSharpShell
 
 			byte[]? compiledAssembly;
 
-			if (File.Exists(path))
+			if (File.Exists(path) && args != null && args.Length>0)
 				compiledAssembly = File.ReadAllBytes(path);
 			else
 				compiledAssembly = CompileSourceCode(sourceCode);
@@ -58,7 +58,7 @@ namespace CSharpShell
 			if (compiledAssembly == null)
 				return null;
 
-			if (!File.Exists(path))
+			if (!File.Exists(path) && args != null && args.Length > 0)
 				File.WriteAllBytes(path, compiledAssembly);
 
 			var result = ExecuteAssembly(compiledAssembly, args, out WeakReference assemblyLoadContextWeakRef);
