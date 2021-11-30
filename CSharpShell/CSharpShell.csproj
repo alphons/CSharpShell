@@ -8,7 +8,7 @@
 	<PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
-	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	  <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
 	  <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
