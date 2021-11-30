@@ -1,18 +1,13 @@
 ﻿using System.Text;
 using System.Diagnostics;
 
-if (args.Length == 0 && Debugger.IsAttached == false)
-{
-	Console.WriteLine("No arguments");
-	return;
-}
-
 var compiler = new CSharpShell.Compiler();
 
 object? result;
 
-if (Debugger.IsAttached)
+if (args.Length == 0 || Debugger.IsAttached == false)
 {
+	Console.WriteLine("CSharpShell 1.0 (exit = quit)");
 	// Interactive
 	while (true)
 	{
