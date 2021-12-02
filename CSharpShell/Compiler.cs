@@ -7,9 +7,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
 
-using Microsoft.Extensions.Configuration;
-
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace CSharpShell
 {
@@ -29,6 +29,10 @@ namespace CSharpShell
 			.Build();
 
 			this.CacheDir = Configuration["CacheDir"];
+
+
+			//var ass = Assembly.GetExecutingAssembly().GetReferencedAssemblies();
+
 
 			references = new List<MetadataReference>();
 
@@ -68,7 +72,7 @@ namespace CSharpShell
 
 			var guid = new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(sourceCode)));
 
-			var path = $"{this.CacheDir}/{guid}.bin";
+			var path = $"{this.CacheDir}/{guid}.dll";
 
 			byte[]? compiledAssembly;
 
@@ -101,7 +105,13 @@ namespace CSharpShell
 		{
 			using (var peStream = new MemoryStream())
 			{
-				var result = GenerateCode(ImplicitUsings + sourceCode).Emit(peStream);
+				var csharpCompilation = GenerateCode(ImplicitUsings + sourceCode);
+
+				var sw = Stopwatch.StartNew();
+				var result = csharpCompilation.Emit(peStream);
+
+				if(System.Diagnostics.Debugger.IsAttached)
+					Console.WriteLine("Emit:" + sw.ElapsedMilliseconds + "mS");
 
 				if (!result.Success)
 				{
@@ -126,18 +136,18 @@ namespace CSharpShell
 		{
 			var codeString = SourceText.From(sourceCode);
 
-			var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp10);
+			var parsedSyntaxTreeOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp10);
 
-			var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
+			var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, parsedSyntaxTreeOptions);
 
-			return CSharpCompilation.Create(null,
-				new[] { parsedSyntaxTree },
-				references: references,
-				options: new CSharpCompilationOptions(OutputKind.ConsoleApplication,
+			var cSharpCompilationOptions = new CSharpCompilationOptions(OutputKind.ConsoleApplication,
 				optimizationLevel: OptimizationLevel.Release,
-				assemblyIdentityComparer: DesktopAssemblyIdentityComparer.Default));
+				assemblyIdentityComparer: DesktopAssemblyIdentityComparer.Default);
+
+			return CSharpCompilation.Create(null,new[] { parsedSyntaxTree }, references: references, options: cSharpCompilationOptions);
 		}
-		
+
+
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		private object? ExecuteAssembly(byte[] compiledAssembly, string[]? args, out WeakReference weakReference)

@@ -1,8 +1,11 @@
-﻿//#!/usr/local/bin/csharp
+//#!/usr/local/bin/csharp
+//#
+//# (c) Alphons van der Heijden
+//# 
+//# tce-ab.cs - Example script TinyCore
 //#
 //#
-//#
-//#
+
 using System;
 using System.IO;
 using System.Text;
@@ -14,15 +17,16 @@ namespace Alphons
 {
 	class Program
 	{
+		const string url = "http://repo.tinycorelinux.net/12.x/x86_64/tcz/";
+
 		static async Task Main(string[] args)
 		{
-			var url = "http://repo.tinycorelinux.net/12.x/x86_64/tcz/tags.db.gz";
-
-			var cache = "/tmp/tags.db.gz";
+			var tags = "tags.db.gz";
+			var cache = "/tmp/" + tags;
 
 			byte[] gz;
 
-			Console.WriteLine("tce-fetch, loading package list");
+			Console.WriteLine("tce-ab - Tiny Core Extension: Application Browser");
 
 			if (File.Exists(cache))
 			{
@@ -32,7 +36,7 @@ namespace Alphons
 			{
 				var http = new HttpClient();
 
-				gz = await http.GetByteArrayAsync(url);
+				gz = await http.GetByteArrayAsync(url + tags);
 
 				await File.WriteAllBytesAsync(cache, gz);
 			}
@@ -43,19 +47,21 @@ namespace Alphons
 
 			using var ms = new MemoryStream();
 
-			decompressionStream.CopyTo(ms);
+			await decompressionStream.CopyToAsync(ms);
 
-			var text = Encoding.UTF8.GetString(ms.ToArray());
+			var text = Encoding.Default.GetString(ms.ToArray());
 
-			var searchlist = new List<string>();
+			var lines = text.Split('\n').ToList();
 
-			var lines = text.Split('\n');
+			Console.WriteLine($"Packages loaded: {lines.Count}");
 
-			Console.WriteLine($"Packages loaded: {lines.Length}");
+			var name = string.Empty;
+
+			var msg = await Info(null);
 
 			while (true)
 			{
-				Console.Write("q=quit l=list s=searh :");
+				Console.Write(msg);
 
 				var k = Console.ReadKey();
 				if (k.Key == ConsoleKey.Q)
@@ -65,28 +71,40 @@ namespace Alphons
 				{
 					default:
 						break;
+					case ConsoleKey.A:
+						await Info(name);
+						break;
 					case ConsoleKey.L:
 						Console.WriteLine(text);
 						break;
 					case ConsoleKey.S:
-						searchlist.Clear();
 						int intI = 1;
-						Console.Write("\nSearch for: ");
+						Console.Clear();
+						Console.Write("Enter starting chars or desired extension, e.g. abi: ");
 						var search = Console.ReadLine();
-						foreach (var l in lines)
-						{
-							if (l.ToLower().Contains(search))
-							{
-								searchlist.Add(l);
-								Console.WriteLine($"\t{intI++}. {l}");
-							}
-						}
+						if (search == null)
+							continue;
+
+						Console.Clear();
+						Console.WriteLine("\ntce - Tiny Core Extension browser\n");
+
+						var searchlist = lines
+							.Where( x => x.Contains(search, StringComparison.OrdinalIgnoreCase))
+							.ToList();
+
+						foreach (var l in searchlist)
+							Console.WriteLine($"\t{intI++}. {l}");
+
 						Console.Write($"\nEnter selection (  1 - {intI - 1} ) or (q)uit: ");
 						var selection = Console.ReadLine();
+						if (selection?.ToLower() == "q")
+							continue;
+
 						if (int.TryParse(selection, out int intSelection))
 						{
-							Console.WriteLine($"Todo, info from {searchlist[intSelection - 1]}");
-							Console.ReadLine();
+							var extension = searchlist[intSelection - 1];
+							name = extension.Split('\t')[0];
+							msg = await Info(name);
 						}
 
 						break;
@@ -94,6 +112,18 @@ namespace Alphons
 			}
 
 			Console.WriteLine();
+		}
+
+		private async static Task<string> Info(string? name)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+				return "S)earch P)rovides K)eywords or Q)uit: ";
+			using var http = new HttpClient();
+			var info = await http.GetStringAsync(url + name + ".info");
+			Console.Clear();
+			Console.WriteLine(info);
+			return "A)bout I)nstall O)nDemand D)epends T)ree F)iles siZ)e S)earch P)provides K)eywords or Q)uit: ";
+
 		}
 	}
 }

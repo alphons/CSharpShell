@@ -7,6 +7,15 @@ var compiler = new CSharpShell.Compiler();
 
 object? result;
 
+if (Debugger.IsAttached)
+{
+	for (int intI = 0; intI < 10; intI++)
+	{
+		result = compiler.Execute("Console.WriteLine();", new string[0]);
+	}
+	return;
+}
+
 if (args.Length == 0 || Debugger.IsAttached == true)
 {
 	Console.WriteLine("CSharpShell 1.0 (exit = quit)");

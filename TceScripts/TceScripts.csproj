@@ -7,4 +7,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="HelloWorld.cs" />
+    <Compile Remove="uni2ascii.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="HelloWorld.cs" />
+    <None Include="uni2ascii.cs" />
+  </ItemGroup>
+
 </Project>
