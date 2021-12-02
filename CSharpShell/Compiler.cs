@@ -9,26 +9,48 @@ using Microsoft.CodeAnalysis;
 
 using Microsoft.Extensions.Configuration;
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace CSharpShell
 {
 	internal class Compiler
 	{
 		private List<MetadataReference> references;
 
+		private string? CacheDir;
+
 		private string ImplicitUsings;
+
+		[UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assembly file path when publishing as a single file", Justification = "<Pending>")]
 		public Compiler()
 		{
 			var Configuration = new ConfigurationBuilder()
 			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 			.Build();
 
-			var dir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+			this.CacheDir = Configuration["CacheDir"];
 
 			references = new List<MetadataReference>();
-			var refs = Configuration.GetSection("References");
-			foreach (var r in refs.GetChildren().ToList())
+
+			var RefNames = new string[] { "NETCore", "AspNetCore" };
+			var RefTypes = new string[] { "System.Object", "Microsoft.AspNetCore.WebHost" }; // Webhost werkt niet!
+
+			for (int intI = 0; intI < RefNames.Length; intI++)
 			{
-				references.Add(MetadataReference.CreateFromFile(Path.Combine(dir, r.Value)));
+				var refs = Configuration.GetSection(RefNames[intI]);
+				if (refs == null)
+					continue;
+				var dir = Path.GetDirectoryName(Type.GetType(RefTypes[intI])?.Assembly.Location);
+				if (dir == null)
+					continue;
+				foreach (var r in refs.GetChildren().ToList())
+				{
+					var path = Path.Combine(dir, r.Value);
+					if (File.Exists(path))
+						references.Add(MetadataReference.CreateFromFile(path));
+					else
+						Console.WriteLine($"appsettings.json not found: {r.Value} section:{RefNames[intI]} directory:{dir}");
+				}
 			}
 
 			ImplicitUsings = String.Empty;
@@ -46,7 +68,7 @@ namespace CSharpShell
 
 			var guid = new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(sourceCode)));
 
-			var path = @"/var/spool/" + guid + ".bin";
+			var path = $"{this.CacheDir}/{guid}.bin";
 
 			byte[]? compiledAssembly;
 
@@ -118,7 +140,7 @@ namespace CSharpShell
 		
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		private object? ExecuteAssembly(byte[] compiledAssembly, string[] args, out WeakReference weakReference)
+		private object? ExecuteAssembly(byte[] compiledAssembly, string[]? args, out WeakReference weakReference)
 		{
 			using (var asm = new MemoryStream(compiledAssembly))
 			{
@@ -133,7 +155,7 @@ namespace CSharpShell
 				if (entry != null)
 				{
 					if (entry.GetParameters().Length > 0)
-						result = entry.Invoke(null, new object[] { args });
+						result = entry.Invoke(null, args == null ? null : new object[] { args });
 					else
 						result = entry.Invoke(null, null);
 				}

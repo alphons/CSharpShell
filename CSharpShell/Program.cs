@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using System.Diagnostics;
 
+// dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained false
+
 var compiler = new CSharpShell.Compiler();
 
 object? result;
