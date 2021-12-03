@@ -7,19 +7,19 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
-using System.Reflection.Emit;
+using System.Diagnostics.CodeAnalysis;
+
 
 namespace CSharpShell
 {
 	internal class Compiler
 	{
-		private List<MetadataReference> references;
+		private List<MetadataReference>? references;
 
 		private string? CacheDir;
 
-		private string ImplicitUsings;
+		private string? ImplicitUsings;
 
 		[UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assembly file path when publishing as a single file", Justification = "<Pending>")]
 		public Compiler()
@@ -28,27 +28,69 @@ namespace CSharpShell
 			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 			.Build();
 
+			this.references = GetMetadataReference(Configuration);
+
 			this.CacheDir = Configuration["CacheDir"];
 
+			this.ImplicitUsings = GetUsings(Configuration);
+		}
 
-			//var ass = Assembly.GetExecutingAssembly().GetReferencedAssemblies();
+		private string? GetUsings(IConfigurationRoot? Configuration)
+		{
+			if (Configuration == null)
+				return null;
 
+			var ImplicitUsings = string.Empty;
 
-			references = new List<MetadataReference>();
+			var usgs = Configuration.GetSection("Usings");
+			foreach (var r in usgs.GetChildren().ToList())
+			{
+				ImplicitUsings += $"using {r.Value};";
+			}
+
+			return ImplicitUsings;
+		}
+
+		private List<MetadataReference>? GetMetadataReference(IConfigurationRoot? Configuration)
+		{
+			if (Configuration == null)
+				return null;
+
+			//var netCoreVer = System.Environment.Version;
+			//var runtimeVer = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+			//var dirRuntime = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+			// "C:\Program Files\dotnet\shared\Microsoft.NETCore.App\6.0.0\"
+
+			var references = new List<MetadataReference>();
 
 			var RefNames = new string[] { "NETCore", "AspNetCore" };
-			var RefTypes = new string[] { "System.Object", "Microsoft.AspNetCore.WebHost" }; // Webhost werkt niet!
+			var RefTypes = new string[] { "System", "Microsoft.AspNetCore.Metadata" }; // Metadata is small 
 
 			for (int intI = 0; intI < RefNames.Length; intI++)
 			{
 				var refs = Configuration.GetSection(RefNames[intI]);
 				if (refs == null)
 					continue;
-				var dir = Path.GetDirectoryName(Type.GetType(RefTypes[intI])?.Assembly.Location);
-				if (dir == null)
-					continue;
+
+				string? dir = null;
+
+				try
+				{
+					var assembly = AppDomain.CurrentDomain.Load(RefTypes[intI]);
+#pragma warning disable IL3000 // Avoid accessing Assembly file path when publishing as a single file
+					dir = Path.GetDirectoryName(assembly.Location);
+#pragma warning restore IL3000 // Avoid accessing Assembly file path when publishing as a single file
+				}
+				catch
+				{
+				}
 				foreach (var r in refs.GetChildren().ToList())
 				{
+					if (string.IsNullOrWhiteSpace(dir))
+					{
+						Console.WriteLine($"Framework: {RefTypes[intI]} not found, missing SDK?");
+						break;
+					}
 					var path = Path.Combine(dir, r.Value);
 					if (File.Exists(path))
 						references.Add(MetadataReference.CreateFromFile(path));
@@ -57,13 +99,7 @@ namespace CSharpShell
 				}
 			}
 
-			ImplicitUsings = String.Empty;
-
-			var usgs = Configuration.GetSection("Usings");
-			foreach (var r in usgs.GetChildren().ToList())
-			{
-				ImplicitUsings += $"using {r.Value};";
-			}
+			return references;
 		}
 
 		public object? Execute(string sourceCode, string[] args)
@@ -186,7 +222,9 @@ namespace CSharpShell
 
 			protected override Assembly Load(AssemblyName assemblyName)
 			{
+#pragma warning disable CS8603 // Possible null reference return.
 				return null;
+#pragma warning restore CS8603 // Possible null reference return.
 			}
 		}
 
