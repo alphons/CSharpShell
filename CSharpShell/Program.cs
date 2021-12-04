@@ -1,8 +1,6 @@
 ﻿using System.Text;
 using System.Diagnostics;
 
-// dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained false
-
 var compiler = new CSharpShell.Compiler();
 
 object? result;
@@ -55,7 +53,7 @@ using var sr = new StreamReader(path);
 
 while (!sr.EndOfStream)
 {
-	var line = sr.ReadLine();
+	var line = await sr.ReadLineAsync();
 	if (line == null)
 		break;
 	if (line.StartsWith('#'))

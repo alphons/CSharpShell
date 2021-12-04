@@ -24,22 +24,31 @@ namespace CSharpShell
 		[UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assembly file path when publishing as a single file", Justification = "<Pending>")]
 		public Compiler()
 		{
-			var Configuration = new ConfigurationBuilder()
-			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-			.Build();
+			try
+			{
+				var Configuration = new ConfigurationBuilder()
+				.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+				.Build();
 
-			this.references = GetMetadataReference(Configuration);
+				this.references = GetMetadataReferences(Configuration);
 
-			this.CacheDir = Configuration["CacheDir"];
+				this.CacheDir = GetCacheDir(Configuration);
 
-			this.ImplicitUsings = GetUsings(Configuration);
+				this.ImplicitUsings = GetImplicitUsings(Configuration);
+			}
+			catch(Exception eee)
+			{
+				Console.Error.WriteLine($"Compiler error: {eee.Message}");
+			}
 		}
 
-		private string? GetUsings(IConfigurationRoot? Configuration)
+		private string GetCacheDir(IConfigurationRoot Configuration)
 		{
-			if (Configuration == null)
-				return null;
+			return Configuration["CacheDir"];
+		}
 
+		private string? GetImplicitUsings(IConfigurationRoot Configuration)
+		{
 			var ImplicitUsings = string.Empty;
 
 			var usgs = Configuration.GetSection("Usings");
@@ -51,11 +60,8 @@ namespace CSharpShell
 			return ImplicitUsings;
 		}
 
-		private List<MetadataReference>? GetMetadataReference(IConfigurationRoot? Configuration)
+		private List<MetadataReference>? GetMetadataReferences(IConfigurationRoot Configuration)
 		{
-			if (Configuration == null)
-				return null;
-
 			//var netCoreVer = System.Environment.Version;
 			//var runtimeVer = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
 			//var dirRuntime = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
@@ -88,14 +94,14 @@ namespace CSharpShell
 				{
 					if (string.IsNullOrWhiteSpace(dir))
 					{
-						Console.WriteLine($"Framework: {RefTypes[intI]} not found, missing SDK?");
+						Console.Error.WriteLine($"Framework: {RefTypes[intI]} not found, missing SDK?");
 						break;
 					}
 					var path = Path.Combine(dir, r.Value);
 					if (File.Exists(path))
 						references.Add(MetadataReference.CreateFromFile(path));
 					else
-						Console.WriteLine($"appsettings.json not found: {r.Value} section:{RefNames[intI]} directory:{dir}");
+						Console.Error.WriteLine($"appsettings.json value not found: {r.Value} section:{RefNames[intI]} directory:{dir}");
 				}
 			}
 
@@ -132,7 +138,7 @@ namespace CSharpShell
 			}
 
 			if(assemblyLoadContextWeakRef.IsAlive)
-				Console.WriteLine("Unloading failed!");
+				Console.Error.WriteLine("Unloading failed!");
 
 			return result;
 		}
@@ -146,18 +152,18 @@ namespace CSharpShell
 				var sw = Stopwatch.StartNew();
 				var result = csharpCompilation.Emit(peStream);
 
-				if(System.Diagnostics.Debugger.IsAttached)
+				if(Debugger.IsAttached)
 					Console.WriteLine("Emit:" + sw.ElapsedMilliseconds + "mS");
 
 				if (!result.Success)
 				{
-					Console.WriteLine("Compilation done with error.");
-
-					var failures = result.Diagnostics.Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+					var failures = result.Diagnostics
+						.Where(diagnostic => diagnostic.IsWarningAsError || 
+						diagnostic.Severity == DiagnosticSeverity.Error);
 
 					foreach (var diagnostic in failures)
 					{
-						Console.Error.WriteLine("{0}: {1}", diagnostic.Id, diagnostic.GetMessage());
+						Console.Error.WriteLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
 					}
 
 					return null;
