@@ -1,5 +1,8 @@
-﻿#!/usr/local/bin/csharp
+#!/usr/local/bin/csharp
 #
+# (c) 2021 Alphons van der Heijden
+# 
+# HelloWorld.cs - famous one liner
 #
-Console.WriteLine("Hello World");
+Console.WriteLine("Hello, World!");
 

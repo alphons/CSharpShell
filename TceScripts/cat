@@ -1,0 +1,8 @@
+#!/usr/local/bin/csharp
+#
+#
+#
+if(args.Length <=1)
+	Console.WriteLine($"usage: {args[0]} <filename>");
+else
+	Console.WriteLine( await File.ReadAllTextAsync( args[1] ));

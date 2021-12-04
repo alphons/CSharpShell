@@ -1,10 +1,10 @@
-//#!/usr/local/bin/csharp
-//#
-//# (c) Alphons van der Heijden
-//# 
-//# tce-ab.cs - Example script TinyCore
-//#
-//#
+#!/usr/local/bin/csharp
+#
+# (c) Alphons van der Heijden
+# 
+# tce-ab.cs - Example script TinyCore
+#
+#
 
 using System;
 using System.IO;
