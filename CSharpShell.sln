@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSharpShell", "CSharpShell\CSharpShell.csproj", "{D40EC69D-B233-491C-B647-41E150D98BBF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TceScripts", "TceScripts\TceScripts.csproj", "{011D0F52-2CB7-43EA-A56E-66BF1987B6E1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples", "Examples\Examples.csproj", "{011D0F52-2CB7-43EA-A56E-66BF1987B6E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
