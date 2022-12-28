@@ -2,18 +2,28 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="args.cs" />
+    <Compile Remove="colors.cs" />
+    <Compile Remove="echo.cs" />
     <Compile Remove="HelloWorld.cs" />
+    <Compile Remove="tce-ab.cs" />
+    <Compile Remove="testje.cs" />
     <Compile Remove="uni2ascii.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="args.cs" />
+    <None Include="colors.cs" />
+    <None Include="echo.cs" />
     <None Include="HelloWorld.cs" />
+    <None Include="tce-ab.cs" />
+    <None Include="testje.cs" />
     <None Include="uni2ascii.cs" />
   </ItemGroup>
 

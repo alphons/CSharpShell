@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+# csharp 1.0 wrapper
+#
+dotnet /home/tc/CSharpShell/CSharpShell.dll $1

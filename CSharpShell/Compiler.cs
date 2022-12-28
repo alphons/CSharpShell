@@ -15,13 +15,13 @@ namespace CSharpShell
 {
 	internal class Compiler
 	{
-		private List<MetadataReference>? references;
+		private readonly List<MetadataReference>? references;
 
-		private string? CacheDir;
+		private readonly string? CacheDir;
 
-		private string? ImplicitUsings;
+		private readonly string? ImplicitUsings;
 
-		[UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assembly file path when publishing as a single file", Justification = "<Pending>")]
+		[UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assemblfiley file path when publishing as a single file", Justification = "<Pending>")]
 		public Compiler()
 		{
 			try
@@ -36,18 +36,18 @@ namespace CSharpShell
 
 				this.ImplicitUsings = GetImplicitUsings(Configuration);
 			}
-			catch(Exception eee)
+			catch (Exception eee)
 			{
 				Console.Error.WriteLine($"Compiler error: {eee.Message}");
 			}
 		}
 
-		private string GetCacheDir(IConfigurationRoot Configuration)
+		private static string? GetCacheDir(IConfigurationRoot Configuration)
 		{
 			return Configuration["CacheDir"];
 		}
 
-		private string? GetImplicitUsings(IConfigurationRoot Configuration)
+		private static string? GetImplicitUsings(IConfigurationRoot Configuration)
 		{
 			var ImplicitUsings = string.Empty;
 
@@ -60,7 +60,7 @@ namespace CSharpShell
 			return ImplicitUsings;
 		}
 
-		private List<MetadataReference>? GetMetadataReferences(IConfigurationRoot Configuration)
+		private static List<MetadataReference>? GetMetadataReferences(IConfigurationRoot Configuration)
 		{
 			//var netCoreVer = System.Environment.Version;
 			//var runtimeVer = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
@@ -97,6 +97,8 @@ namespace CSharpShell
 						Console.Error.WriteLine($"Framework: {RefTypes[intI]} not found, missing SDK?");
 						break;
 					}
+					if (r.Value == null)
+						continue;
 					var path = Path.Combine(dir, r.Value);
 					if (File.Exists(path))
 						references.Add(MetadataReference.CreateFromFile(path));
@@ -108,18 +110,16 @@ namespace CSharpShell
 			return references;
 		}
 
-		public object? Execute(string sourceCode, string[] args)
+		public async Task<object?> ExecuteAsync(string sourceCode, string[] args)
 		{
-			using var md5 = System.Security.Cryptography.MD5.Create();
-
-			var guid = new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(sourceCode)));
+			var guid = new Guid(System.Security.Cryptography.MD5.HashData(Encoding.UTF8.GetBytes(sourceCode)));
 
 			var path = $"{this.CacheDir}/{guid}.dll";
 
 			byte[]? compiledAssembly;
 
 			if (File.Exists(path) && args != null && args.Length>0)
-				compiledAssembly = File.ReadAllBytes(path);
+				compiledAssembly = await File.ReadAllBytesAsync(path);
 			else
 				compiledAssembly = CompileSourceCode(sourceCode);
 
@@ -127,7 +127,7 @@ namespace CSharpShell
 				return null;
 
 			if (!File.Exists(path) && args != null && args.Length > 0)
-				File.WriteAllBytes(path, compiledAssembly);
+				await File.WriteAllBytesAsync(path, compiledAssembly);
 
 			var result = ExecuteAssembly(compiledAssembly, args, out WeakReference assemblyLoadContextWeakRef);
 
@@ -145,40 +145,39 @@ namespace CSharpShell
 
 		private byte[]? CompileSourceCode(string sourceCode)
 		{
-			using (var peStream = new MemoryStream())
+			using var peStream = new MemoryStream();
+
+			var csharpCompilation = GenerateCode(ImplicitUsings + sourceCode);
+
+			var sw = Stopwatch.StartNew();
+			var result = csharpCompilation.Emit(peStream);
+
+			if (Debugger.IsAttached)
+				Console.WriteLine("Emit:" + sw.ElapsedMilliseconds + "mS");
+
+			if (!result.Success)
 			{
-				var csharpCompilation = GenerateCode(ImplicitUsings + sourceCode);
+				var failures = result.Diagnostics
+					.Where(diagnostic => diagnostic.IsWarningAsError ||
+					diagnostic.Severity == DiagnosticSeverity.Error);
 
-				var sw = Stopwatch.StartNew();
-				var result = csharpCompilation.Emit(peStream);
-
-				if(Debugger.IsAttached)
-					Console.WriteLine("Emit:" + sw.ElapsedMilliseconds + "mS");
-
-				if (!result.Success)
+				foreach (var diagnostic in failures)
 				{
-					var failures = result.Diagnostics
-						.Where(diagnostic => diagnostic.IsWarningAsError || 
-						diagnostic.Severity == DiagnosticSeverity.Error);
-
-					foreach (var diagnostic in failures)
-					{
-						Console.Error.WriteLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
-					}
-
-					return null;
+					Console.Error.WriteLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
 				}
 
-				peStream.Seek(0, SeekOrigin.Begin);
-
-				return peStream.ToArray();
+				return null;
 			}
+
+			peStream.Seek(0, SeekOrigin.Begin);
+
+			return peStream.ToArray();
 		}
 		private CSharpCompilation GenerateCode(string sourceCode)
 		{
 			var codeString = SourceText.From(sourceCode);
 
-			var parsedSyntaxTreeOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp10);
+			var parsedSyntaxTreeOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp11);
 
 			var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, parsedSyntaxTreeOptions);
 
@@ -192,31 +191,30 @@ namespace CSharpShell
 
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		private object? ExecuteAssembly(byte[] compiledAssembly, string[]? args, out WeakReference weakReference)
+		private static object? ExecuteAssembly(byte[] compiledAssembly, string[]? args, out WeakReference weakReference)
 		{
-			using (var asm = new MemoryStream(compiledAssembly))
+			using var asm = new MemoryStream(compiledAssembly);
+
+			var assemblyLoadContext = new SimpleUnloadableAssemblyLoadContext();
+
+			var assembly = assemblyLoadContext.LoadFromStream(asm);
+
+			var entry = assembly.EntryPoint;
+
+			object? result = null;
+
+			if (entry != null)
 			{
-				var assemblyLoadContext = new SimpleUnloadableAssemblyLoadContext();
-
-				var assembly = assemblyLoadContext.LoadFromStream(asm);
-
-				var entry = assembly.EntryPoint;
-
-				object? result = null;
-
-				if (entry != null)
-				{
-					if (entry.GetParameters().Length > 0)
-						result = entry.Invoke(null, args == null ? null : new object[] { args });
-					else
-						result = entry.Invoke(null, null);
-				}
-				assemblyLoadContext.Unload();
-
-				weakReference = new WeakReference(assemblyLoadContext);
-
-				return result;
+				if (entry.GetParameters().Length > 0)
+					result = entry.Invoke(null, args == null ? null : new object[] { args });
+				else
+					result = entry.Invoke(null, null);
 			}
+			assemblyLoadContext.Unload();
+
+			weakReference = new WeakReference(assemblyLoadContext);
+
+			return result;
 		}
 
 		private class SimpleUnloadableAssemblyLoadContext : AssemblyLoadContext

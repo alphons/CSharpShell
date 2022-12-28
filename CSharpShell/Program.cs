@@ -1,18 +1,12 @@
 ﻿using System.Text;
 using System.Diagnostics;
 
+//nuget Microsoft.CodeAnalysis.CSharp
+//nuget Microsoft.Extensions.Configuration.Json
+
 var compiler = new CSharpShell.Compiler();
 
 object? result;
-
-if (Debugger.IsAttached)
-{
-	for (int intI = 0; intI < 10; intI++)
-	{
-		result = compiler.Execute("Console.WriteLine();", new string[0]);
-	}
-	return;
-}
 
 if (args.Length == 0 || Debugger.IsAttached == true)
 {
@@ -30,7 +24,7 @@ if (args.Length == 0 || Debugger.IsAttached == true)
 		try
 		{
 			var sw = Stopwatch.StartNew();
-			result = compiler.Execute(line, args);
+			result = await compiler.ExecuteAsync(line, args);
 			Console.WriteLine(sw.ElapsedMilliseconds + "mS");
 		}
 		catch (Exception ex)
@@ -64,7 +58,7 @@ var cs = sb.ToString();
 
 try
 {
-	result = compiler.Execute(cs, args);
+	result = await compiler.ExecuteAsync(cs, args);
 }
 catch (Exception ex)
 {
