@@ -14,7 +14,7 @@
     <Compile Remove="HelloWorld.cs" />
     <Compile Remove="tce-ab.cs" />
     <Compile Remove="testje.cs" />
-    <Compile Remove="uni2ascii.cs" />
+    <Compile Remove="win2unix.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,7 +24,7 @@
     <None Include="HelloWorld.cs" />
     <None Include="tce-ab.cs" />
     <None Include="testje.cs" />
-    <None Include="uni2ascii.cs" />
+    <None Include="win2unix.cs" />
   </ItemGroup>
 
 </Project>

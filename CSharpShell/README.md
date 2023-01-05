@@ -12,9 +12,9 @@ The wrapper script csharp is included and calls the Shell interpreter
 ```
 #!/bin/sh
 #
-# csharp 1.0
+# csharp 1.0 wrapper
 #
-/home/tc/CSharpShell/CSharpShell $1
+dotnet /home/tc/CSharpShell/CSharpShell.dll $1 $2 $3 $4 $5 $6 $7 $8 $9
 ```
 
 Example script listing arguments
@@ -27,3 +27,7 @@ Example script listing arguments
 for(int i=0;i<args.Length;i++)
 	Console.WriteLine($"{i} {args[i]}");
 ```
+
+## All Scripts must have \n line endings, the windows \r\n will NOT work
+
+
